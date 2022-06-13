@@ -5,7 +5,7 @@ import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
 
 export default function App() {
-  const db = SQLite.openDatabase("testing.db");
+  const db = SQLite.openDatabase("testing.db"); // Creates database if it doesn't exist
 
   useEffect(() => {
     async function initialise() {
@@ -72,12 +72,13 @@ export default function App() {
     }
   }
 
+  // Gets latest entry into database
   const getDB = () => {
     return new Promise((resolve, reject) => {
       db.transaction(
         function (tx) {
           tx.executeSql(
-            "SELECT * FROM test;",
+            "SELECT * FROM test WHERE id=(SELECT max(id) FROM test);",
             [],
             function (tx, resultSet) {
               let data = [];
