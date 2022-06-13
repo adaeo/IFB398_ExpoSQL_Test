@@ -1,5 +1,12 @@
 import { StatusBar } from "expo-status-bar";
-import { Button, StyleSheet, Text, View, TextInput } from "react-native";
+import {
+  Button,
+  StyleSheet,
+  Text,
+  ScrollView,
+  View,
+  TextInput,
+} from "react-native";
 
 import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
@@ -8,26 +15,39 @@ export default function App() {
   const db = SQLite.openDatabase("testing.db"); // Creates database if it doesn't exist
 
   const [text, onChangeText] = useState("");
-  const [textValue, setTextValue] = useState("Initial Text");
+  const [dbText, setDbText] = useState("Initial Text");
 
   useEffect(() => {
     async function initialise() {
       try {
-        console.log("before init");
-        let initValue = await initDB();
+        let initValue = await initDB(); // Initialise table
         console.log(initValue);
-        console.log("after init");
-        console.log("before set");
-        let setValue = await setDB("chicken");
+
+        let setValue = await setDB("chicken (first value in useEffect)"); // Add one item to table
         console.log(setValue);
-        console.log("after set");
       } catch (err) {
         console.log(err);
       }
     }
-    initialise();
+    initialise(); // Call above function
   }, []);
 
+  /*
+  The db.transaction method executes an sql transaction.
+  A transaction will have some parameters:
+    @param callback: The SQL transaction to perform (tx.executeSql)
+    @param fail callback: a function that executes on failed transaction
+    @param success callback: a function that exectures on successful transaction
+
+  The first callback is a function as an SQLTransaction object. 
+  tx.executeSql will have some parameters:
+    @param sqlStatement: A string of raw SQL
+    @param args: A string or array of strings to replace ? wildcards.
+    @param callback: a function that executes on successful execution (use this to handle response data)
+    @param fail callback: a function that executes on failed execution
+  */
+
+  // Initialise the table in the database; simple example for now
   const initDB = () => {
     return new Promise((resolve, reject) => {
       db.transaction(
@@ -46,6 +66,7 @@ export default function App() {
     });
   };
 
+  // sets a value into the above table. value is a parameter that must be a string
   const setDB = (value) => {
     return new Promise((resolve, reject) => {
       db.transaction(
@@ -62,13 +83,14 @@ export default function App() {
     });
   };
 
-  async function getData(tableArg, nameArg) {
+  // gets latest value from DB table and updates textValue.
+  async function getData() {
     try {
       console.log("before get");
       let getValue = await getDB("test");
       console.log(getValue);
       console.log("after get");
-      setTextValue(getValue[0].value);
+      setDbText(getValue[0].value);
     } catch (err) {
       console.log(err);
     }
@@ -83,11 +105,13 @@ export default function App() {
             "SELECT * FROM test WHERE id=(SELECT max(id) FROM test);",
             [],
             function (tx, resultSet) {
+              // returns a resultSet on success
               let data = [];
               for (let i = 0, c = resultSet.rows.length; i < c; i++) {
-                data.push(resultSet.rows.item(i));
+                // loop through resultSet
+                data.push(resultSet.rows.item(i)); // push each item on to end of stack/array
               }
-              resolve(data);
+              resolve(data); // return data array
             },
             function (tx, error) {
               reject(error.message);
@@ -101,27 +125,36 @@ export default function App() {
     });
   };
 
+  // Basic UI code, feel free to improve it.
+  // TextInput used to store userInput
+  // Button to submit input and update below Text
   return (
-    <View style={styles.container}>
-      <TextInput
-        style={styles.input}
-        onChangeText={onChangeText}
-        placeholder={"TextInput Area"}
-        value={text}
-      />
-      <Button
-        title="submit!"
-        onPress={() => {
-          setDB(text)
-          getData();
-        }}
-      />
-      <Text>{textValue}</Text>
-      <StatusBar style="auto" />
-    </View>
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.container}
+    >
+      <View style={styles.container}>
+        <TextInput
+          style={styles.input}
+          onChangeText={onChangeText}
+          placeholder={"TextInput Area"}
+          value={text}
+        />
+        <Button
+          title="submit!"
+          onPress={() => {
+            setDB(text);
+            getData();
+          }}
+        />
+        <Text>{dbText}</Text>
+        <StatusBar style="auto" />
+      </View>
+    </ScrollView>
   );
 }
 
+// Basic stylesheet
 const styles = StyleSheet.create({
   container: {
     flex: 1,
