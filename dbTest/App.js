@@ -9,15 +9,18 @@ export default function App() {
 
   useEffect(() => {
     async function initialise() {
-      console.log("before init");
-      await initDB()
-        .then((value) => console.log(value))
-        .catch((err) => console.log(err));
-      console.log("after init");
-      console.log("before set");
-      await setDB().then((value) =>
-        console.log(value)).catch((err) => console.log(err));
-      console.log("after set");
+      try {
+        console.log("before init");
+        let initValue = await initDB();
+        console.log(initValue);
+        console.log("after init");
+        console.log("before set");
+        let setValue = await setDB();
+        console.log(setValue);
+        console.log("after set");
+      } catch (err) {
+        console.log(err);
+      }
     }
     initialise();
   }, []);
@@ -35,7 +38,6 @@ export default function App() {
         },
         function () {
           resolve("Created Database OK");
-          // console.log("Created database OK");
         }
       );
     });
@@ -59,9 +61,15 @@ export default function App() {
   };
 
   async function getData(tableArg, nameArg) {
-    console.log("before get");
-    await getDB("test").then((data) => {console.log(data)}).catch((err) => {console.log(err)});
-    console.log("after get")
+    try {
+      console.log("before get");
+      let getValue = await getDB("test");
+      console.log(getValue);
+      console.log("after get");
+    }
+    catch (err) {
+      console.log(err);
+    }
   }
 
   const getDB = () => {
