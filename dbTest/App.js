@@ -1,11 +1,14 @@
 import { StatusBar } from "expo-status-bar";
-import { Button, StyleSheet, Text, View } from "react-native";
+import { Button, StyleSheet, Text, View, TextInput } from "react-native";
 
 import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
 
 export default function App() {
   const db = SQLite.openDatabase("testing.db"); // Creates database if it doesn't exist
+
+  const [text, onChangeText] = useState("");
+  const [textValue, setTextValue] = useState("Initial Text");
 
   useEffect(() => {
     async function initialise() {
@@ -15,7 +18,7 @@ export default function App() {
         console.log(initValue);
         console.log("after init");
         console.log("before set");
-        let setValue = await setDB();
+        let setValue = await setDB("chicken");
         console.log(setValue);
         console.log("after set");
       } catch (err) {
@@ -43,18 +46,17 @@ export default function App() {
     });
   };
 
-  const setDB = () => {
+  const setDB = (value) => {
     return new Promise((resolve, reject) => {
       db.transaction(
         function (tx) {
-          tx.executeSql("INSERT INTO test (value) VALUES (?);", ["chicken"]);
+          tx.executeSql("INSERT INTO test (value) VALUES (?);", [value]);
         },
         function (error) {
           reject(error.message);
         },
         function () {
           resolve("Set Database OK");
-          // console.log("Created database OK");
         }
       );
     });
@@ -66,8 +68,8 @@ export default function App() {
       let getValue = await getDB("test");
       console.log(getValue);
       console.log("after get");
-    }
-    catch (err) {
+      setTextValue(getValue[0].value);
+    } catch (err) {
       console.log(err);
     }
   }
@@ -101,13 +103,20 @@ export default function App() {
 
   return (
     <View style={styles.container}>
+      <TextInput
+        style={styles.input}
+        onChangeText={onChangeText}
+        placeholder={"TextInput Area"}
+        value={text}
+      />
       <Button
-        title="Press Me!"
+        title="submit!"
         onPress={() => {
+          setDB(text)
           getData();
         }}
       />
-      <Text>Open up App.js to start working on your app!</Text>
+      <Text>{textValue}</Text>
       <StatusBar style="auto" />
     </View>
   );
@@ -119,5 +128,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
+  },
+  input: {
+    height: 40,
+    margin: 12,
+    borderWidth: 1,
+    padding: 10,
   },
 });
