@@ -8,14 +8,31 @@ import {
   TextInput,
 } from "react-native";
 
+import * as SecureStore from "expo-secure-store";
 import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
+
+// Functions for SecureStore from https://docs.expo.dev/versions/latest/sdk/securestore/
+async function save(key, value) {
+  await SecureStore.setItemAsync(key, value);
+}
+
+async function getValueFor(key) {
+  let result = await SecureStore.getItemAsync(key);
+  if (result) {
+    alert("🔐 Here's your value 🔐 \n" + result);
+  } else {
+    alert("No values stored under that key.");
+  }
+}
 
 export default function App() {
   const db = SQLite.openDatabase("testing.db"); // Creates database if it doesn't exist
 
   const [text, onChangeText] = useState("");
   const [dbText, setDbText] = useState("Initial Text");
+  const [key, onChangeKey] = useState("Your key here");
+  const [value, onChangeValue] = useState("Your value here");
 
   useEffect(() => {
     async function initialise() {
@@ -25,6 +42,9 @@ export default function App() {
 
         let setValue = await setDB("chicken (first value in useEffect)"); // Add one item to table
         console.log(setValue);
+
+        save("red", "blue");
+        console.log("Set SecureStore key value OK");
       } catch (err) {
         console.log(err);
       }
@@ -134,21 +154,40 @@ export default function App() {
       contentContainerStyle={styles.container}
     >
       <View style={styles.container}>
+        <Text>View 1</Text>
+      </View>
+      <View style={styles.container}>
+        <Text style={styles.paragraph}>{dbText}</Text>
         <TextInput
           style={styles.input}
           onChangeText={onChangeText}
-          placeholder={"TextInput Area"}
+          placeholder={"Database Input"}
           value={text}
         />
         <Button
-          title="submit!"
+          title="set and get!"
           onPress={() => {
             setDB(text);
             getData();
           }}
         />
-        <Text>{dbText}</Text>
+      </View>
+      <View style={styles.container}>
+        <Text style={styles.paragraph}>🔐 Enter 'red' for 'blue' 🔐</Text>
+        <TextInput
+          style={styles.textInput}
+          onSubmitEditing={(event) => {
+            getValueFor(event.nativeEvent.text);
+          }}
+          placeholder="SecureStore input"
+        />
         <StatusBar style="auto" />
+      </View>
+      <View style={styles.container}>
+        <Text>View 4</Text>
+      </View>
+      <View style={styles.container}>
+        <Text>View 5</Text>
       </View>
     </ScrollView>
   );
@@ -167,5 +206,18 @@ const styles = StyleSheet.create({
     margin: 12,
     borderWidth: 1,
     padding: 10,
+  },
+  paragraph: {
+    marginTop: 34,
+    margin: 24,
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  textInput: {
+    height: 35,
+    borderColor: "gray",
+    borderWidth: 0.5,
+    padding: 4,
   },
 });
