@@ -6,11 +6,14 @@ import {
   ScrollView,
   View,
   TextInput,
+  SafeAreaView,
+  Pressable,
 } from "react-native";
 
 import * as SecureStore from "expo-secure-store";
 import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
+import * as bcrypt from "react-native-bcrypt";
 
 // Functions for SecureStore from https://docs.expo.dev/versions/latest/sdk/securestore/
 async function save(key, value) {
@@ -29,8 +32,17 @@ async function getValueFor(key) {
 export default function App() {
   const db = SQLite.openDatabase("testing.db"); // Creates database if it doesn't exist
 
-  const [text, onChangeText] = useState("");
-  const [dbText, setDbText] = useState("Initial Text");
+  const [login, onLoginChange] = useState({
+    token: "",
+    username: "",
+    password: "",
+  });
+  const [searchText, changeSearchText] = useState("");
+  const [writeText, changeWriteText] = useState("");
+  const [ApiResponseText, setApiResponseText] = useState("");
+  const [apiTextReturn, setReturnText] = useState("");
+  const [text2, onChangeText2] = useState("");
+  const [dbText, setDbText] = useState("");
   const [key, onChangeKey] = useState("Your key here");
   const [value, onChangeValue] = useState("Your value here");
 
@@ -40,7 +52,7 @@ export default function App() {
         let initValue = await initDB(); // Initialise table
         console.log(initValue);
 
-        let setValue = await setDB("chicken (first value in useEffect)"); // Add one item to table
+        let setValue = await setDB("Hello from database"); // Add one item to table
         console.log(setValue);
 
         save("red", "blue");
@@ -103,6 +115,113 @@ export default function App() {
     });
   };
 
+  async function doLogin() {
+    console.log(login.username + login.password);
+    var username = login.username;
+    var password = login.password;
+    const response = await fetch(`http://neat.servebeer.com:3000/user/login`, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: login.username,
+        password: login.password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.log(data);
+      onLoginChange({
+        token: data.message,
+        username: username,
+        password: password,
+      });
+      return;
+    }
+
+    console.log(data);
+    onLoginChange({
+      token: data.token,
+      username: username,
+      password: password,
+    });
+  }
+
+  async function searchApiAndReturn() {
+    console.log("console");
+    const response = await fetch(`http://neat.servebeer.com:3000/rn/get`, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text: searchText,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.log(data.message);
+      setReturnText(data.message);
+      return;
+    }
+
+    console.log(data.text[0].text);
+
+    setReturnText(data.text[0].text);
+  }
+
+  async function writeToApi() {
+    console.log("writting to api");
+    const response = await fetch(`http://neat.servebeer.com:3000/rn/write`, {
+      method: "PUT",
+      headers: {
+        accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text: writeText,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.log(data.message);
+      setApiResponseText(data.message);
+      return;
+    }
+    console.log(data.message);
+    setApiResponseText(data.message);
+  }
+
+  async function getDataFromRESTAPI() {
+    console.log("hello");
+    const response = await fetch(`http://neat.servebeer.com:3000/rn/`, {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.log(data);
+      return;
+    }
+
+    console.log(data);
+    onChangeText2(data.message);
+  }
+
   // gets latest value from DB table and updates textValue.
   async function getData() {
     try {
@@ -149,70 +268,193 @@ export default function App() {
   // TextInput used to store userInput
   // Button to submit input and update below Text
   return (
-    <ScrollView
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.container}
-    >
-      <View style={styles.container}>
-        <Text>View 1</Text>
-      </View>
-      <View style={styles.container}>
-        <Text style={styles.paragraph}>{dbText}</Text>
-        <TextInput
-          style={styles.input}
-          onChangeText={onChangeText}
-          placeholder={"Database Input"}
-          value={text}
-        />
-        <Button
-          title="set and get!"
-          onPress={() => {
-            setDB(text);
-            getData();
-          }}
-        />
-      </View>
-      <View style={styles.container}>
-        <Text style={styles.paragraph}>🔐 Enter 'red' for 'blue' 🔐</Text>
-        <TextInput
-          style={styles.textInput}
-          onSubmitEditing={(event) => {
-            getValueFor(event.nativeEvent.text);
-          }}
-          placeholder="SecureStore input"
-        />
-        <StatusBar style="auto" />
-      </View>
-      <View style={styles.container}>
-        <Text>View 4</Text>
-      </View>
-      <View style={styles.container}>
-        <Text>View 5</Text>
-      </View>
-    </ScrollView>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.container}>
+          <Text style={{ padding: 25, fontSize: 25 }}>Connectivity</Text>
+          <View style={{ padding: 12 }}>
+            <View style={styles.container2}>
+              <Text style={styles.paragraph}>
+                Connect to database and get welcome message
+              </Text>
+              <Text style={styles.paragraph}>From Database: {dbText}</Text>
+              <View style={{ padding: 6, width: "100%" }}>
+                <Pressable style={styles.button} onPress={getData}>
+                  <Text style={{ color: "white" }}>fetch from database</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+          <View style={{ padding: 12 }}>
+            <View style={styles.container2}>
+              <Text style={styles.paragraph}>
+                Connect to rest api and get welcome message
+              </Text>
+              <Text style={styles.paragraph}>From API: {text2}</Text>
+              <View style={{ padding: 6, width: "100%" }}>
+                <Pressable style={styles.button} onPress={getDataFromRESTAPI}>
+                  <Text style={{ color: "white" }}>fetch from api</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </View>
+        <View style={styles.container}>
+          <Text style={{ padding: 25, fontSize: 25 }}>Authentication</Text>
+          <View style={{ padding: 12 }}>
+            <View style={styles.container2}>
+              <Text style={styles.paragraph}>
+                Login to rest api and display a jwt token
+              </Text>
+              <Text style={styles.paragraph}>From API: {login.token}</Text>
+              <View style={{ padding: 6, width: "100%" }}>
+                <Pressable style={styles.button} onPress={doLogin}>
+                  <TextInput
+                    style={styles.input}
+                    onChangeText={(text) =>
+                      onLoginChange({
+                        token: login.token,
+                        username: text,
+                        password: login.password,
+                      })
+                    }
+                    placeholder={"username"}
+                    value={login.username}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    onChangeText={(text) =>
+                      onLoginChange({
+                        token: login.token,
+                        username: login.username,
+                        password: text,
+                      })
+                    }
+                    placeholder={"password"}
+                    value={login.password}
+                  />
+                  <Text style={{ color: "white" }}>fetch from api</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </View>
+        <View style={styles.container}>
+          <Text style={{ padding: 25, fontSize: 25 }}>Data retreival</Text>
+          <View style={{ padding: 12 }}>
+            <View style={styles.container2}>
+              <Text style={styles.paragraph}>
+                Type text and if its in api retrieve it.
+              </Text>
+              <Text style={styles.paragraph}>From API: {apiTextReturn}</Text>
+              <View style={{ padding: 6, width: "100%" }}>
+                <Pressable style={styles.button} onPress={searchApiAndReturn}>
+                  <TextInput
+                    style={styles.input}
+                    onChangeText={changeSearchText}
+                    placeholder={"query"}
+                    value={searchText}
+                  />
+                  <Text style={{ color: "white" }}>search</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </View>
+        <View style={styles.container}>
+          <Text style={{ padding: 25, fontSize: 25 }}>Data write</Text>
+          <View style={{ padding: 12 }}>
+            <View style={styles.container2}>
+              <Text style={styles.paragraph}>
+                type text and write it to the rest api
+              </Text>
+              <Text style={styles.paragraph}>
+                Response from API: {ApiResponseText}
+              </Text>
+              <View style={{ padding: 6, width: "100%" }}>
+                <Pressable style={styles.button} onPress={writeToApi}>
+                  <TextInput
+                    style={styles.input}
+                    onChangeText={changeWriteText}
+                    placeholder={"write"}
+                    value={writeText}
+                  />
+                  <Text style={{ color: "white" }}>Write</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
+{
+  /* <TextInput
+style={styles.input}
+onChangeText={onChangeText}
+placeholder={"Database Input"}
+value={text}
+/>
+<Button
+title="set and get!"
+onPress={() => {
+  setDB(text);
+  getData();
+}}
+/> */
+}
+
+// <View style={styles.container}>
+//         <Text style={styles.paragraph}>🔐 Enter 'red' for 'blue' 🔐</Text>
+//         <TextInput
+//           style={styles.textInput}
+//           onSubmitEditing={(event) => {
+//             getValueFor(event.nativeEvent.text);
+//           }}
+//           placeholder="SecureStore input"
+//         />
+//         <StatusBar style="auto" />
+//       </View>
 // Basic stylesheet
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    paddingTop: StatusBar.currentHeight,
+  },
+  scrollView: {
+    backgroundColor: "white",
+    marginHorizontal: 20,
+  },
+  container2: {
+    flex: 2,
+    backgroundColor: "black",
     alignItems: "center",
     justifyContent: "center",
+  },
+  button: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
+    width: "100%",
+    backgroundColor: "red",
   },
   input: {
     height: 40,
     margin: 12,
     borderWidth: 1,
     padding: 10,
+    backgroundColor: "white",
+    width: "100%",
   },
   paragraph: {
     marginTop: 34,
     margin: 24,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
     textAlign: "center",
+    color: "white",
   },
   textInput: {
     height: 35,
